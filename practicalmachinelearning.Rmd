@@ -1,0 +1,106 @@
+---
+title: "Prediction Assignment:Practical Machine learning"
+author: "Divyanshu"
+date: "12/10/2020"
+output: html_document
+---
+## Overview
+in today's world a lot of people are Using devices which monitors the day to day activities of the person for example Jawbone Up, Nike FuelBand, and Fitbit , this has made collection of large amount of data about personal activity relatively cheaper.this project analyse  the way in which participants perform a barbell lift. The data comes from http://groupware.les.inf.puc-rio.br/har wherein a event is organised 6 participants  perform the same set of exercises correctly and incorrectly with monitors set on the target area of the body and equipments.
+
+
+## DATA
+The training data is taken from:https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+The test data is taken from:https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+
+```{r Load required packages for analysis}
+  library(caret)
+library(rpart)
+library(rpart.plot)
+library(ggplot2)
+library(corrplot)
+library(randomForest)
+library(rattle)
+set.seed(21345)
+
+```
+## Data Loading
+First, we load the training and testing set from the online sources and then split the training set further into
+training and test sets.
+```{r }
+training_URL <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+testing_URL <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+tr_aining_data <- read.csv(url(training_URL))
+te_sting_data <- read.csv(url(testing_URL))
+la_bel <- createDataPartition(tr_aining_data$classe, p = 0.7, list = FALSE)
+tr_ain <- tr_aining_data[la_bel, ]
+te_st <- tr_aining_data[-la_bel, ]
+
+```
+## Data_cleaning_
+there are  160 variables present in the dataset, some variables are there which has nearly zero variance and some
+contain a lot of NA terms. we need to exclude these terms.
+```{r }
+NZV <- nearZeroVar(tr_ain)
+tr_ain <- tr_ain[ ,-NZV]
+te_st <- te_st[ ,-NZV]
+la_bel <- apply(tr_ain, 2, function(x) mean(is.na(x))) > 0.95
+tr_ain <- tr_ain[, -which(la_bel, la_bel == FALSE)]
+te_st <- te_st[, -which(la_bel, la_bel == FALSE)]
+tr_ain <- tr_ain[ , -(1:5)] #other 5 identification variables  removed.
+te_st <- te_st[ , -(1:5)]
+
+dim(tr_aining_data)
+dim(te_sting_data)
+
+
+```
+## Explortory An_alysis
+Now we have cleaned our dataset and it's free from absurd variables and all, Now to we should find relation among them  by looking at the corelation plot.
+```{r }
+corrMat <- cor(tr_ain[,-54])
+corrplot(corrMat, method = "color", type = "lower", tl.cex = 0.8, tl.col = rgb(0,1,1))
+
+```
+In this plot  gradient having dark colour  represents  high correlation . due to less number of correlation the need of using principal component analysis in order to reduce the correlated variables is rueled out.
+
+
+## Training Model
+Three models used:
+1.Decision Tree
+2.Random Forest
+
+
+## Decision Tree
+Decision tree is a graph to represent choices and their results in form of a tree. The nodes in the graph represent an event or choice and the edges of the graph represent the decision rules or conditions. It is mostly used in Machine Learning and Data Mining applications using R.
+rpart():Recursive Partitioning And Regression Trees
+parameters formula, data, weights, subset, na.action , method.
+
+```{r }
+model1_DT <- rpart(classe ~ ., data = tr_ain, method = "class")
+predict1_DT <- predict(model1_DT, te_st, type = "class")
+confMat1_DT <- confusionMatrix(predict1_DT, te_st$classe)
+confMat1_DT
+
+```
+## Random Forest
+In  random forest approach a large number of decision trees are created. Every observation is given to every decision tree. The most common outcome for each observation is used as the final output.
+traincontrol():Control Parameters For Train
+parameters:method,repeats,number,p,search,initialWindow, horizon, fixedWindow, skip
+
+```{r }
+control_1 <- trainControl(method = "cv", number = 3, verboseIter=FALSE)
+model1_RF <- train(classe ~ ., data = tr_ain, method = "rf", trControl = control_1)
+predict1_RF <- predict(model1_RF, te_st)
+confMat1_RF <- confusionMatrix(predict1_RF, te_st$classe)
+confMat1_RF
+```
+## predicting the output
+```{r }
+predict1_RF <- predict(model1_RF, te_sting_data)
+predict1_RF
+```
+
+
+
+
